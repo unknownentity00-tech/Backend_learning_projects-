@@ -16,15 +16,26 @@ public class TaskQueue {
         this.sequenceCounter = new AtomicLong(0);
     }
 
-    public void submit(String id, int priority, Runnable action) {
+    public void submit(String id, int priority, int maxRetries  , Runnable action) {
         long seq = sequenceCounter.incrementAndGet();
-        Task task = new Task(id, priority, seq, action);
+        Task task = new Task(id, priority,seq, action,maxRetries);
         taskMap.put(id, task);
         try {
             queue.put(task);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Task submission interrupted", e);
+        }
+    }
+   public void resubmit(Task task) {
+        if (task.getState() != Task.State.CANCELLED) {
+            task.setState(Task.State.QUEUED);
+            taskMap.put(task.getId(), task);
+            try {
+                queue.put(task);
+            } catch (Exception e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
      public Task take() throws InterruptedException {
