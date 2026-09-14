@@ -1,9 +1,5 @@
 package In_MemoryTask_Queue_with_Workers;
 
-
-
-    
-
 public class Producer implements Runnable {
     private final WorkerPool workerPool;
     private final int taskCount;
@@ -20,15 +16,14 @@ public class Producer implements Runnable {
         try {
             for (int i = 1; i <= taskCount; i++) {
                 String taskId = name + "-Task-" + i;
-                // Assign a sample priority (e.g., cycling or random)
                 int priority = (i % 5) + 1; 
+                int maxRetries = 2; // Pass max retries for Phase 6
 
-                workerPool.submit(taskId, priority, () -> {
+                workerPool.submit(taskId, priority, maxRetries, () -> {
                     System.out.println(Thread.currentThread().getName() + " → Executing " + taskId + " (Priority: " + priority + ")");
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                    // Simulate occasional failure for testing retries
+                    if (Math.random() < 0.3) {
+                        throw new RuntimeException("Random transient failure");
                     }
                 });
 
@@ -39,5 +34,4 @@ public class Producer implements Runnable {
             Thread.currentThread().interrupt();
         }
     }
-
 }

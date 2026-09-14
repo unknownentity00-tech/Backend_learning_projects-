@@ -1,7 +1,5 @@
 package In_MemoryTask_Queue_with_Workers;
 
-
-
 public class TaskRunner implements Runnable {
     private final int taskCount;
     private final WorkerPool workerPool;
@@ -18,20 +16,15 @@ public class TaskRunner implements Runnable {
         try {
             for (int i = 1; i <= taskCount; i++) {
                 String taskId = name + "-Task-" + i;
-                // Assign a dummy priority or randomize it for testing
-                int priority = (int) (Math.random() * 10) + 1; 
+                int priority = 5;
+                int maxRetries = 3; // Pass max retries for Phase 6
 
-                workerPool.submit(taskId, priority, () -> {
-                    System.out.println(Thread.currentThread().getName() + " executing " + taskId + " (Priority: " + priority + ")");
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                workerPool.submit(taskId, priority, maxRetries, () -> {
+                    System.out.println(Thread.currentThread().getName() + " executing " + taskId);
                 });
 
-                System.out.println("Producer " + name + ": submitted " + taskId + " with priority " + priority);
-                Thread.sleep(50);
+                System.out.println("Producer " + name + ": submitted " + taskId);
+                Thread.sleep(100);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
