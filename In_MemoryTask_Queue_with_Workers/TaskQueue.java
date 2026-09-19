@@ -44,10 +44,16 @@ public class TaskQueue {
         return task;
      }
 
-    public void cancel(String taskId) {
+    public boolean cancel(String taskId) {
         Task task = taskMap.get(taskId);
+        if (task != null && task.getState() == Task.State.QUEUED) {
+            task.cancel();
+            taskMap.remove(taskId);
+            return true;
+        }
         if (task != null) {
             task.cancel();
         }
+        return false;
     }
 }

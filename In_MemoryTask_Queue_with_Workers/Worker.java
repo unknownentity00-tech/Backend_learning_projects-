@@ -1,52 +1,43 @@
 package In_MemoryTask_Queue_with_Workers;
 
-public class Worker implements  Runnable {
-     private final TaskQueue taskQueue;
-     private final String name;
-      private WorkerPool workerPool;
+public class Worker implements Runnable {
+    private final TaskQueue taskQueue;
+    private final WorkerPool workerPool;
+    private final MetricsCollector metrics;
+    private final String name;
     private volatile boolean isRunning = true;
 
-     public Worker(TaskQueue taskQueue,WorkerPool workerPool ,  String name) {
-         this.taskQueue = taskQueue;
-          this.workerPool = workerPool;
+    public Worker(TaskQueue taskQueue, WorkerPool workerPool, MetricsCollector metrics, String name) {
+        this.taskQueue = taskQueue;
+        this.workerPool = workerPool;
+        this.metrics = metrics;
         this.name = name;
     }
-  
-@Override 
-   public  void run (){
-        try{
-             while (isRunning && !Thread.currentThread().isInterrupted()) {
+
+    @Override
+    public void run() {
+        try {
+            while (isRunning && !Thread.currentThread().isInterrupted()) {
                 Task task = taskQueue.take();
-                if(task.getState() == Task.State.CANCELLED){
-                    System.out.println("[" + name + "] Skipping cancelled task " + task.getId() 
-                    + " (Priority: " + task.getPriority() + ")");
+                
+                if (task.getState() == Task.State.CANCELLED) {
                     continue;
                 }
-                
-                System.out.println("[" + name + "] Starting execution of " + task.getId() 
-                    + " (Priority: " + task.getPriority() + ")");
 
+                metrics.incrementStarted();
                 try {
                     task.run();
-                   System.out.println("[" + name + "] Task-" + task.getId() + " succeeded on attempt " + task.getAttemptCount());
-
-                }catch(Exception e ){
-                    System.out.println("[" + name + "] Task-" + task.getId() + " failed on attempt " + task.getAttemptCount());
+                    metrics.incrementSucceeded();
+                } catch (Exception e) {
                     workerPool.handleTaskFailure(task, e);
                 }
             }
-              
-        }catch(InterruptedException e){
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
 
-        }
-
-  public void stopWorker(){
-    isRunning = false ;
-  }
-
-     }
-
-
-
+    public void stopWorker() {
+        isRunning = false;
+    }
+}
