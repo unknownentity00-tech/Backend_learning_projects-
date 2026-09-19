@@ -28,7 +28,7 @@ public class WorkerPool {
         this.state = PoolState.RUNNING;
 
         for (int i = 1; i <= workerCount; i++) {
-            Worker worker = new Worker(taskQueue, "Worker-" + i);
+            Worker worker = new Worker(taskQueue,  this , "Worker-" + i);
             Thread thread = new Thread(worker, "Worker-Thread-" + i);
             workers.add(worker);
             workerThreads.add(thread);

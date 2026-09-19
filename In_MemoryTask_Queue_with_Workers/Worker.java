@@ -6,8 +6,9 @@ public class Worker implements  Runnable {
       private WorkerPool workerPool;
     private volatile boolean isRunning = true;
 
-     public Worker(TaskQueue taskQueue, String name) {
+     public Worker(TaskQueue taskQueue,WorkerPool workerPool ,  String name) {
          this.taskQueue = taskQueue;
+          this.workerPool = workerPool;
         this.name = name;
     }
   

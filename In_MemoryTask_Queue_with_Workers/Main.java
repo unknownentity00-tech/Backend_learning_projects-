@@ -13,37 +13,38 @@ public class Main {
 
         System.out.println("=== Phase 6 Concurrency, Priority, Cancellation & Retry Test ===");
 
-        // Submit tasks with explicit priorities and maxRetries configuration
-        pool.submit("Task-1", 1, 2, createWrappedTask(1, activeCount, maxConcurrent, false));
-        pool.submit("Task-2", 10, 2, createWrappedTask(2, activeCount, maxConcurrent, false));
-        pool.submit("Task-3", 5, 2, createWrappedTask(3, activeCount, maxConcurrent, false));
-        pool.submit("Task-4", 8, 2, createWrappedTask(4, activeCount, maxConcurrent, false));
+       // Test 1: Immediate success
+        pool.submit("Task-Success", 5, 2, createWrappedTask("Task-Success", activeCount, maxConcurrent, false));
+
+        // Test 2: Transient failure recovering on attempt 3 (2 retries)
+        pool.submit("Task-Flaky", 10, 3, createFlakyWrappedTask("Task-Flaky", activeCount, maxConcurrent, 2));
+
+        // Test 3: Permanent failure exhausting retries (maxRetries = 2 -> 3 total executions)
+        pool.submit("Task-PermanentFail", 1, 2, createWrappedTask("Task-PermanentFail", activeCount, maxConcurrent, true));
+
+        // Test 4: Cancellation during retry state check
+        pool.submit("Task-CancelRetry", 8, 3, createFlakyWrappedTask("Task-CancelRetry", activeCount, maxConcurrent, 5));
         
-        // Add a flaky task that fails on attempt 1, succeeds on retry
-        pool.submit("Task-Flaky", 9, 3, createFlakyWrappedTask("Task-Flaky", activeCount, maxConcurrent));
+        System.out.println("\n[Test Action] Cancelling Task-CancelRetry...");
+        pool.cancel("Task-CancelRetry");
 
-        // Test cancellation: Cancel Task-4 before it executes
-        System.out.println("\n[Test Action] Cancelling Task-4...");
-        pool.cancel("Task-4");
-
-        Thread.sleep(5000);
+        Thread.sleep(6000);
         pool.shutdown();
 
         System.out.println("\n--- Test Results ---");
         System.out.println("Max concurrent executions observed: " + maxConcurrent.get() + " (Must be <= " + workerCount + ")");
     }
 
-    // Helper method to wrap standard task execution logic with concurrency counters
-    private static Runnable createWrappedTask(int taskId, AtomicInteger activeCount, AtomicInteger maxConcurrent, boolean shouldFail) {
+   private static Runnable createWrappedTask(String name, AtomicInteger activeCount, AtomicInteger maxConcurrent, boolean shouldFail) {
         return () -> {
             int currentActive = activeCount.incrementAndGet();
             maxConcurrent.updateAndGet(max -> Math.max(max, currentActive));
 
-            System.out.println(Thread.currentThread().getName() + " → Executing Task-" + taskId + " (Active: " + currentActive + ")");
+            System.out.println(Thread.currentThread().getName() + " → Executing " + name + " (Active: " + currentActive + ")");
             try {
-                Thread.sleep(300); // Simulate workload duration
+                Thread.sleep(200);
                 if (shouldFail) {
-                    throw new RuntimeException("Forced failure for Task-" + taskId);
+                    throw new RuntimeException("Forced failure");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -51,24 +52,20 @@ public class Main {
                 activeCount.decrementAndGet();
             }
         };
-    }
-
-    // Helper method for testing retries with transient failures
-    private static Runnable createFlakyWrappedTask(String taskName, AtomicInteger activeCount, AtomicInteger maxConcurrent) {
-        AtomicInteger attemptTracker = new AtomicInteger(0);
+    }private static Runnable createFlakyWrappedTask(String name, AtomicInteger activeCount, AtomicInteger maxConcurrent, int failUntilAttempt) {
+        AtomicInteger runCounter = new AtomicInteger(0);
         return () -> {
-            int attempt = attemptTracker.incrementAndGet();
+            int attempt = runCounter.incrementAndGet();
             int currentActive = activeCount.incrementAndGet();
             maxConcurrent.updateAndGet(max -> Math.max(max, currentActive));
 
-            System.out.println(Thread.currentThread().getName() + " → Executing " + taskName + " on Attempt " + attempt);
+            System.out.println(Thread.currentThread().getName() + " → Executing " + name + " (Attempt " + attempt + ")");
             try {
                 Thread.sleep(200);
-                if (attempt < 3) {
-                    System.out.println("-> " + taskName + " failing intentionally on attempt " + attempt);
-                    throw new RuntimeException("Transient failure");
+                if (attempt <= failUntilAttempt) {
+                    throw new RuntimeException("Transient failure on attempt " + attempt);
                 }
-                System.out.println("-> " + taskName + " succeeded on attempt " + attempt);
+                System.out.println("-> " + name + " successfully completed on attempt " + attempt);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } finally {

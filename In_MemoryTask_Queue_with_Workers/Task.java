@@ -34,10 +34,11 @@ public  class Task  implements Runnable , Comparable<Task>{
     }
     
       public boolean  canRetry(){
-        return attemptCount <= maxRetries && state != State.CANCELLED;
+        return (attemptCount -1) < maxRetries && state != State.CANCELLED;
       }
       public long  calculateBackoffDelay(long initialDelayMs ,   long maxDelayMs){
-
+         int retryIndex = attemptCount - 1;
+         
         long delay  = initialDelayMs * (long)Math.pow(2,attemptCount -1);
         return Math.min(delay , maxDelayMs);
       }
@@ -62,7 +63,6 @@ public  class Task  implements Runnable , Comparable<Task>{
     public long getSequenceNumber() {
         return sequenceNumber;
     }
-
     public String getId() {
         return id;
     }
